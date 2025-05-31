@@ -1,9 +1,7 @@
 services:
   express:
     restart: always
-    build:
-      context: ./express
-      dockerfile: Dockerfile.prod
+    build: ./express
     env_file:
       - .env
     ports:
