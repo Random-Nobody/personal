@@ -56,10 +56,10 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd /root/git/server || { echo "dir does not exist"; exit 1; }
-            
             git pull origin build || { echo "Git pull failed"; exit 1; } 
             echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u ${{ secrets.DOCKERHUB_NAME }} --password-stdin || { echo "Docker login failed"; exit 1; }
             
+            cd ./backend
             docker compose -f docker-compose.prod.yml pull || { echo "Docker compose pull failed"; exit 1; }
             docker compose -f docker-compose.prod.yml up -d --remove-orphans || { echo "Docker compose up failed"; exit 1; }
             docker logout
