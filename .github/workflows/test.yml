@@ -1,10 +1,8 @@
 name: CI Tests
 on:
   pull_request:
-    # This workflow runs for PRs that target the 'main' branch
     branches:
       - main
-    # Triggers when a PR is opened, updated with new commits, or reopened
     types: [opened, synchronize, reopened]
 
 jobs:
@@ -72,8 +70,11 @@ jobs:
         run: |
           mkdir -p backend/express/spa
           mv frontend/dist/* backend/express/spa/
-      - name: Build test
+      - name: Build test image
         run: docker build -t test -f express/Dockerfile.prod express
         working-directory: backend
+        # currently just checks the image builds without issue.
+        # Could maybe possible compose with a docker-compose.integrate.yml
+        # if end to end tests are added.
 
       

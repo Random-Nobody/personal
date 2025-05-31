@@ -8,6 +8,7 @@ services:
       - ./express/public:/app/public
       - ./express/eslint.config.js:/app/eslint.config.js
       - ./express/jest.config.json:/app/jest.config.json
+      - ./express/vite.config.ts:/app/vite.config.ts
     env_file:
       - .env
     ports:
