@@ -8,9 +8,8 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  frontend test:
+  frontend:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,15 +28,9 @@ jobs:
         run: npm run test
         working-directory: frontend
 
-      - name: Build frontend
-        run: npm run onlybuild
-        working-directory: frontend
-      - name: Copy build artifacts
-        run: |
-          mkdir -p backend/express/spa
-          mv frontend/dist/* backend/express/spa/
-
-  backend test:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -59,4 +52,28 @@ jobs:
       - name: Tear down test environment
         if: always()
         run: docker compose -f backend/docker-compose.test.yml down
-        working-directory: backend 
+        working-directory: backend
+
+  integration:
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend
+        run: npm run onlybuild
+        working-directory: frontend
+      - name: Copy build artifacts
+        run: |
+          mkdir -p backend/express/spa
+          mv frontend/dist/* backend/express/spa/
+      - name: Build test
+        run: docker build -t test -f express/Dockerfile.prod express
+        working-directory: backend
+
+      

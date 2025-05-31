@@ -1,6 +1,6 @@
 import session from 'express-session';
 import { createClient } from 'redis';
-import { REDIS_URI } from '../config/consts';
+import { REDIS_URI } from '../config/consts.js';
 import { RedisStore } from "connect-redis"
 import { Types } from 'mongoose';
 

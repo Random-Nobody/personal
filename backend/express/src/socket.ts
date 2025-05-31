@@ -1,8 +1,8 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { Socket } from 'socket.io';
-import { webRTCConfig } from './config/webrtc';
-import { setupSession } from './middleware/session';
+import { webRTCConfig } from './config/webrtc.js';
+import { setupSession } from './middleware/session.js';
 import { instrument } from '@socket.io/admin-ui';
 
 interface User {
@@ -62,7 +62,7 @@ export const setupSocket = (httpServer: HTTPServer) => {
         console.log(`Client connected: ${socket.id}`);
         
         const session = (socket.request as any).session;
-        let currentUser: User = { 
+        const currentUser: User = { 
             socketId: socket.id, 
             name: session.name,
             streams: { video: false, audio: false }

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
-import { setupSession } from '../middleware/session';
-import apiRoutes from '../routes/api';
+import { setupSession } from '../middleware/session.js';
+import apiRoutes from '../routes/api.js';
 
 const app = express();
 app.use(express.json());
