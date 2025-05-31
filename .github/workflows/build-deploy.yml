@@ -41,7 +41,7 @@ jobs:
         working-directory: backend
 
   deploy:
-    needs: build-and-push
+    needs: build
     runs-on: ubuntu-latest
     environment: production
     steps:
