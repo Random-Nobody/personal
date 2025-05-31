@@ -2,6 +2,8 @@ import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { Socket } from 'socket.io';
 import { webRTCConfig } from './config/webrtc';
+import { setupSession } from './middleware/session';
+import { instrument } from '@socket.io/admin-ui';
 
 interface User {
     socketId: string;
@@ -29,23 +31,42 @@ const rooms = new Map<string, Room>();
 
 export const setupSocket = (httpServer: HTTPServer) => {
     const io = new SocketIOServer(httpServer, {
-        cors: webRTCConfig.cors
+        cors: {
+            ...webRTCConfig.cors,
+            credentials: true
+        }
+    });
+    
+    // Set up Socket.IO admin UI for debugging
+    instrument(io, {
+        auth: false,
+        mode: process.env.NODE_ENV === 'production' ? "production" : "development",
+    });
+
+    // Use the session middleware for socket.io
+    const wrap = (middleware: any) => (socket: Socket, next: any) => middleware(socket.request, {}, next);
+    io.use(wrap(setupSession()));
+
+    // Authenticate socket connections
+    io.use((socket: Socket, next) => {
+        const session = (socket.request as any).session;
+        if (!session?.authenticated) {
+            console.log('Unauthenticated socket connection rejected');
+            next(new Error('Unauthorized'));
+        } else {
+            next();
+        }
     });
 
     io.on('connection', (socket: Socket) => {
         console.log(`Client connected: ${socket.id}`);
+        
+        const session = (socket.request as any).session;
         let currentUser: User = { 
             socketId: socket.id, 
-            name: null,
+            name: session.name,
             streams: { video: false, audio: false }
         };
-
-        // User Management
-        socket.on('set-user', ({ name }: { name: string }) => {
-            if (!name) return;
-            currentUser.name = name;
-            socket.emit('user-set', currentUser);
-        });
 
         // Room Management
         socket.on('join-room', async (roomName: string) => {
