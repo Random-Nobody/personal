@@ -1,41 +1,69 @@
 #!/bin/zsh
 
-dir=$(echo ${PWD##*/} | tr '[:upper:]' '[:lower:]')
-if [[ $1 == up ]]
-    then
-    if [[ $2 == prod ]]
-        then
+backend() {
+  local op=$1
+  cd backend
+  case $op in
+    "up")
+      if [[ $env == "prod" ]]; then
         docker compose -f docker-compose.prod.yml up -d
-    else
+      else
         docker compose up -d
-    fi
-elif [[ $1 == build ]]
-    then
-    docker compose up --build --force-recreate --no-deps -d
-elif [[ $1 == down ]]
-    then
-    docker compose down
-elif [[ $1 == log ]]
-    then
-    docker logs ${dir}-express-1 --tail 100 -f
-elif [[ $1 == sh ]]
-    then
-    docker exec -it ${dir}-express-1 sh
-elif [[ $1 == re ]]
-    then
-    docker restart ${dir}-express-1
-elif [[ $1 == backup ]]
-    then
-    docker exec -i ${dir}-mongo-1 mongodump -d merndb -o /backup
-elif [[ $1 == restore ]]
-    then
-    docker exec -i ${dir}-mongo-1 mongorestore -d merndb --dir /backup/merndb --drop
-elif [[ $1 == redis ]]
-    then
-    docker exec -i ${dir}-redis-1 redis-cli
-elif [[ $1 == flush ]]
-    then
-    docker exec -i ${dir}-redis-1 redis-cli FLUSHALL
-else
-    echo "nothing happened"
-fi
+      fi
+      ;;
+    "build")
+      docker compose up --build --force-recreate --no-deps -d
+      ;;
+    "re")
+      docker restart backend-express-1
+      ;;
+    "down")
+      docker compose down
+      ;;
+    "log")
+      docker logs backend-express-1 --tail 100 -f
+      ;;
+    "sh")
+      docker exec -it backend-express-1 sh
+      ;;
+    "backup")
+        docker exec -i backend-mongo-1 mongodump -d merndb -o /backup
+        ;;
+    "restore")
+        docker exec -i backend-mongo-1 mongorestore -d merndb --dir /backup/merndb --drop
+        ;;
+  esac
+  cd ..
+}
+
+frontend() {
+  local op=$1
+  cd frontend
+  case $op in
+    "dev")
+      npm run start
+      ;;
+    "build")
+      npm run build
+      ;;
+    "test")
+      npm run test
+      ;;
+  esac
+  cd ..
+}
+
+case $1 in
+  "back")
+    backend $2
+    ;;
+
+  "front")
+    frontend $2
+    ;;
+  *)
+    echo "Usage:"
+    echo "  ./server back <command>    - Run backend commands (up/build/down/log/sh/re/backup/restore)"
+    echo "  ./server front <command>   - Run frontend commands (dev/build/test)"
+    ;;
+esac
