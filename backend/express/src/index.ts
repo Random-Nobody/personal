@@ -7,30 +7,25 @@ import { connectDB } from './config/storage';
 import apiRoutes from './routes/api';
 import testRoutes from './routes/test';
 import { setupSession } from './middleware/session';
+import { errorLogger } from './middleware/error';
+import { PORT } from './config/consts';
 
 const app = express();
 const httpServer = createServer(app);
-const port = 3000; // Fixed port for Docker
 
-// Initialize the server
 async function initServer() {
-  // Middleware
+  // middleware
   app.use(cors());
   app.use(express.json());
 
-  // Connect to databases
+  // setup
   await connectDB();
-
-  // Setup session handling
   app.use(setupSession());
-
-  // Setup WebRTC signaling
   setupWebRTC(httpServer);
 
-  // Mount API routes
+  // routes
   app.use('/api', apiRoutes)
     .use('/test', testRoutes)
-
     .use('/public', express.static(path.join(__dirname, '../public')))
     .use(express.static(path.join(__dirname, '../spa')))
     .use((req, res, next) => {
@@ -39,8 +34,10 @@ async function initServer() {
       res.sendFile(path.join(__dirname, '../spa/index.html'));
     });
 
-  // Start server
-  httpServer.listen(port, () => console.log(`Server Start`));
+  // todo: real error handling. This one just logs.
+  app.use(errorLogger);
+
+  httpServer.listen(PORT, () => console.log(`Server Start`));
 }
 
 initServer().catch(err => {
