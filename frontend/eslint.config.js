@@ -1,5 +1,3 @@
-// frontend/eslint.config.js
-
 import js from '@eslint/js';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
@@ -16,34 +14,11 @@ export default [
       '**/build/',
       '**/android/',
       '**/ios/',
-    ],
-  },
-
-
-  js.configs.recommended,
-  {
-    files: [
       '**/metro.config.js',
-      '**/babel.config.js',
-      '**/jest.config.js',
-      '**/react-native.config.js',
+      '**/eslint.config.js',
     ],
-    languageOptions: {
-      globals: {
-        ...globals.node,
-      },
-      sourceType: 'commonjs', 
-      parser: undefined,
-      parserOptions: {
-        project: false,
-      },
-    },
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/no-var-requires': 'off',
-      'no-undef': 'off', // Allow Node.js globals to be used without being declared
-    },
   },
+  js.configs.recommended,
   {
     files: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
     plugins: {
@@ -77,7 +52,6 @@ export default [
       },
     },
   },
-
   {
     files: [
       '**/*.{ts,tsx,js,jsx}',
