@@ -41,6 +41,6 @@ jobs:
       - name: Build and push to Docker Hub
         run: |
           IMG=${{ secrets.DOCKERHUB_NAME }}/my-express:latest
-          docker build -t $IMG -f backend/Dockerfile .
+          docker build -t $IMG -f express/Dockerfile express
           docker push $IMG
         working-directory: backend
