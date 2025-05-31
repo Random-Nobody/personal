@@ -6,6 +6,8 @@ services:
       - ./express/src:/app/src
       - ./express/spa:/app/spa
       - ./express/public:/app/public
+      - ./express/eslint.config.js:/app/eslint.config.js
+      - ./express/jest.config.json:/app/jest.config.json
     env_file:
       - .env
     ports:

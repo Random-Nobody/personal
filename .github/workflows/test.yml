@@ -8,18 +8,17 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  lint-and-test:
+  frontend test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # --- Frontend Checks ---
       - name: Set up node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Install frontend
         run: npm ci
         working-directory: frontend
@@ -38,10 +37,9 @@ jobs:
           mkdir -p backend/express/spa
           mv frontend/dist/* backend/express/spa/
 
-      # --- Backend Checks ---
-      - name: Build express
-        run: docker build -t test-image -f express/Dockerfile.prod express
-        working-directory: backend
+  backend test:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Docker compose
         run: docker compose -f backend/docker-compose.test.yml up -d
@@ -55,7 +53,7 @@ jobs:
         working-directory: backend
 
       - name: Backend tests
-        run: docker compose -f backend/docker-compose.test.yml exec express npm test
+        run: docker compose -f backend/docker-compose.test.yml exec express npm run test
         working-directory: backend
 
       - name: Tear down test environment

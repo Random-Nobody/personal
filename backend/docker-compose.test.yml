@@ -1,12 +1,18 @@
 services:
   express:
-    image: test-image
-    restart: "no"
+    build: ./express
+    volumes:
+      - ./express/src:/app/src
+      - ./express/spa:/app/spa
+      - ./express/public:/app/public
+      - ./express/eslint.config.js:/app/eslint.config.js
+      - ./express/jest.config.json:/app/jest.config.json
     depends_on:
       - mongo
       - redis
     environment:
       EXPRESS_ENV: "test"
+    restart: "no"
 
   mongo:
     image: mongo
