@@ -1,0 +1,26 @@
+services:
+  express:
+    restart: always
+    build: ./express
+    volumes:
+      - ./express/src:/app/src
+      - ./express/package.json:/app/package.json
+      - ./express/tsconfig.json:/app/tsconfig.json
+    env_file:
+      - ./.env
+    ports:
+      - "80:3000"
+    depends_on:
+      - mongo
+      - redis
+
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo:/data/db
+      - ./db:/backup
+
+  redis:
+    image: redis

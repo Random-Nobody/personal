@@ -1,0 +1,41 @@
+#!/bin/zsh
+
+dir=$(echo ${PWD##*/} | tr '[:upper:]' '[:lower:]')
+if [[ $1 == up ]]
+    then
+    if [[ $2 == prod ]]
+        then
+        docker compose -f docker-compose.prod.yml up -d
+    else
+        docker compose up -d
+    fi
+elif [[ $1 == build ]]
+    then
+    docker compose up --build --force-recreate --no-deps -d
+elif [[ $1 == down ]]
+    then
+    docker compose down
+elif [[ $1 == log ]]
+    then
+    docker logs ${dir}-express-1 --tail 100 -f
+elif [[ $1 == sh ]]
+    then
+    docker exec -it ${dir}-express-1 sh
+elif [[ $1 == re ]]
+    then
+    docker restart ${dir}-express-1
+elif [[ $1 == backup ]]
+    then
+    docker exec -i ${dir}-mongo-1 mongodump -d merndb -o /backup
+elif [[ $1 == restore ]]
+    then
+    docker exec -i ${dir}-mongo-1 mongorestore -d merndb --dir /backup/merndb --drop
+elif [[ $1 == redis ]]
+    then
+    docker exec -i ${dir}-redis-1 redis-cli
+elif [[ $1 == flush ]]
+    then
+    docker exec -i ${dir}-redis-1 redis-cli FLUSHALL
+else
+    echo "nothing happened"
+fi
