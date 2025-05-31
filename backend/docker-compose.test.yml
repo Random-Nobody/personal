@@ -1,0 +1,17 @@
+services:
+  express:
+    image: test-image
+    restart: "no"
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      EXPRESS_ENV: "test"
+
+  mongo:
+    image: mongo
+    restart: "no"
+
+  redis:
+    image: redis
+    restart: "no"
