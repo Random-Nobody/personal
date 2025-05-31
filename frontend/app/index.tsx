@@ -1,5 +1,6 @@
 import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
 import { Link } from 'expo-router';
+import { colors } from '@/constants/Colors';
 
 export default function HomePage() {
   return (
@@ -27,13 +28,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.button,
     padding: 15,
     borderRadius: 8,
     marginTop: 10,
   },
   buttonText: {
-    color: 'white',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
   },

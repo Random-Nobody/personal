@@ -31,3 +31,11 @@ export const initialBoard: PieceType[][] = [
   ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
 ];
+
+export const chessColors = {
+  black: '#000',
+  white: '#FFFFFF',
+  dark: '#B58863',
+  highlight: '#3337',
+  captureable: '#f005',
+} as const;

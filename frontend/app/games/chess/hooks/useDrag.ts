@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { PanResponder, Animated } from 'react-native';
-import { BoardPosition, BoardState, HeldPiece, Move, PieceType, ValidMoves } from '../types';
+import { BoardPosition, BoardState, HeldPiece, Move, ValidMoves } from '../types';
 import getValidMoves from '../util/moves';
 
 export default function useDrag(
@@ -12,7 +12,7 @@ export default function useDrag(
 ) {
   const [heldPiece, setHeldPiece] = useState<HeldPiece>(null);
   const [validMoves, setValidMoves] = useState<ValidMoves>(
-    Array(8).fill(null).map(() => Array(8).fill(false))
+    Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 0))
   );
   const animate = useRef(new Animated.ValueXY()).current;
 
@@ -29,7 +29,7 @@ export default function useDrag(
       if (row > -1 && row < 8 && col > -1 && col < 8) { //shouldn't be out of bounds, but in case
 
         setHeldPiece({ row, col, piece: board[row][col] });
-        if (board[row][col][0] === getCurrentPlayer())
+        if (board[row][col].startsWith(getCurrentPlayer()))
           setValidMoves(getValidMoves(board, row, col, getMoveHistory));
 
         animate.setValue({
@@ -56,7 +56,7 @@ export default function useDrag(
               to: { row, col },
               enPassant: valid[row][col] === 2,
             });
-          return Array(8).fill(null).map(() => Array(8).fill(false));
+          return Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 0));
         })
 
         return null;
