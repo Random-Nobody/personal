@@ -12,13 +12,11 @@ declare module 'express-session' {
 
 export const setupSession = () => {
   const redisClient = createClient({ url: REDIS_URI });
-  redisClient.on('error', (err) => {
-    console.error('Redis Err:', err);
+  redisClient.on('connect', () => console.log('Red Success'));
+  redisClient.connect().catch(err => {
+    console.error('Redis Connection Error:', err);
     process.exit(1);
   });
-  redisClient.on('connect', () => console.log('Red Success'));
-
-  redisClient.connect()
 
   const redisStore = new RedisStore({
     client: redisClient,

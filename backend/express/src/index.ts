@@ -5,6 +5,7 @@ import { createServer } from 'http';
 import { setupWebRTC } from './webrtc';
 import { connectDB } from './config/storage';
 import apiRoutes from './routes/api';
+import testRoutes from './routes/test';
 import { setupSession } from './middleware/session';
 
 const app = express();
@@ -28,6 +29,9 @@ async function initServer() {
 
   // Mount API routes
   app.use('/api', apiRoutes)
+    .use('/test', testRoutes)
+
+    .use('/public', express.static(path.join(__dirname, '../public')))
     .use(express.static(path.join(__dirname, '../spa')))
     .use((req, res, next) => {
       if (req.path.includes('.')) return next();
