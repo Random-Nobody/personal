@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { createServer } from 'http';
 import { setupWebRTC } from './webrtc';
+import { setupChat } from './chat';
 import { connectDB } from './config/storage';
 import apiRoutes from './routes/api';
 import testRoutes from './routes/test';
@@ -22,6 +23,7 @@ async function initServer() {
   await connectDB();
   app.use(setupSession());
   setupWebRTC(httpServer);
+  setupChat(httpServer); // Setup chat functionality
 
   // routes
   app.use('/api', apiRoutes)

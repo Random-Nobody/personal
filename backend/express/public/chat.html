@@ -3,16 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Authentication Test</title>
+    <title>Chat Room</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
             background: #f5f5f5;
         }
         .container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+        }
+        .auth-panel, .room-panel, .chat-panel {
             background: white;
             padding: 20px;
             border-radius: 8px;
@@ -20,23 +25,22 @@
         }
         .auth-form {
             display: flex;
+            flex-direction: column;
             gap: 10px;
             margin-bottom: 20px;
         }
-        .auth-form input {
+        input, button {
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-        .auth-form button {
-            padding: 8px 16px;
+        button {
             background: #007bff;
             color: white;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
         }
-        .auth-form button:hover {
+        button:hover {
             background: #0056b3;
         }
         #status {
@@ -44,50 +48,97 @@
             margin: 10px 0;
             border-radius: 4px;
         }
-        .error {
-            background: #ffe6e6;
-            color: #dc3545;
-        }
-        .success {
-            background: #d4edda;
-            color: #155724;
-        }
-        #userInfo {
-            margin-top: 20px;
+        .error { background: #ffe6e6; color: #dc3545; }
+        .success { background: #d4edda; color: #155724; }
+        #chatMessages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
             padding: 10px;
-            background: #e9ecef;
+            margin-bottom: 10px;
             border-radius: 4px;
+        }
+        .message {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+        .message .name {
+            font-weight: bold;
+            color: #007bff;
+        }
+        #roomList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #roomList li {
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #roomList li:hover {
+            background: #f0f0f0;
+        }
+        #roomList li.active {
+            background: #e3f2fd;
+            font-weight: bold;
+        }
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex: 1;
+        }
+        .hidden {
             display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Chat Authentication Test</h1>
-        
-        <!-- Login Form -->
-        <div id="loginSection">
-            <h2>Login/Register</h2>
-            <div class="auth-form">
-                <input type="text" id="username" placeholder="Username" required>
-                <input type="password" id="password" placeholder="Password" required>
-                <button onclick="handleAuth()">Login/Register</button>
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <!-- Auth Panel -->
+            <div id="loginSection" class="auth-panel">
+                <h2>Login/Register</h2>
+                <div class="auth-form">
+                    <input type="text" id="name" placeholder="Name" required>
+                    <input type="pass" id="pass" placeholder="Pass (optional)">
+                    <button onclick="handleAuth()">Enter Chat</button>
+                </div>
+                <div id="status"></div>
+            </div>
+
+            <!-- Room Panel -->
+            <div id="roomSection" class="room-panel hidden">
+                <h3>Chat Rooms</h3>
+                <div class="auth-form">
+                    <input type="text" id="newRoom" placeholder="Room name">
+                    <button onclick="createRoom()">Create Room</button>
+                </div>
+                <ul id="roomList"></ul>
             </div>
         </div>
 
-        <!-- Status Display -->
-        <div id="status"></div>
-
-        <!-- User Info -->
-        <div id="userInfo">
-            <h3>User Information</h3>
-            <p>Username: <span id="userInfoName"></span></p>
-            <p>Last Login: <span id="userLastLogin"></span></p>
-            <button onclick="handleLogout()">Logout</button>
+        <!-- Chat Panel -->
+        <div id="chatSection" class="chat-panel hidden">
+            <h2>Chat Room: <span id="currentRoom"></span></h2>
+            <div id="chatMessages"></div>
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="Type a message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script>
+        const socket = io();
+        let currentRoomId = null;
+
         // Check authentication status on page load
         checkAuthStatus();
 
@@ -96,9 +147,7 @@
                 const response = await fetch('/api/auth/me');
                 if (response.ok) {
                     const data = await response.json();
-                    showUserInfo(data);
-                } else {
-                    showLoginForm();
+                    handleLoginSuccess(data.name);
                 }
             } catch (error) {
                 showError('Failed to check authentication status');
@@ -106,28 +155,24 @@
         }
 
         async function handleAuth() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            if (!username || !password) {
-                showError('Please enter both username and password');
+            const name = document.getElementById('name').value.trim();
+            const pass = document.getElementById('pass').value;
+            
+            if (!name) {
+                showError('Please enter a name');
                 return;
             }
 
             try {
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, pass })
                 });
 
                 const data = await response.json();
-
                 if (response.ok) {
-                    showUserInfo(data.user);
-                    showSuccess('Successfully logged in!');
+                    handleLoginSuccess(data.user.name);
                 } else {
                     showError(data.error || 'Authentication failed');
                 }
@@ -136,28 +181,112 @@
             }
         }
 
-        async function handleLogout() {
-            try {
-                await fetch('/api/auth/logout', { method: 'POST' });
-                showLoginForm();
-                showSuccess('Successfully logged out!');
-            } catch (error) {
-                showError('Failed to logout');
+        function handleLoginSuccess(name) {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('roomSection').classList.remove('hidden');
+            document.getElementById('chatSection').classList.remove('hidden');
+            
+            // Set name in socket connection
+            socket.emit('set-name', name);
+            
+            // Set up socket listeners
+            setupSocketListeners();
+        }
+
+        function setupSocketListeners() {
+            socket.on('name-set', (name) => {
+                showSuccess(`Welcome, ${name}!`);
+            });
+
+            socket.on('room-list', (rooms) => {
+                updateRoomList(rooms);
+            });
+
+            socket.on('chat-message', (data) => {
+                addMessage(data);
+            });
+
+            socket.on('user-joined', (name) => {
+                addSystemMessage(`${name} joined the room`);
+            });
+
+            socket.on('user-left', (name) => {
+                addSystemMessage(`${name} left the room`);
+            });
+
+            socket.on('room-history', (messages) => {
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = '';
+                messages.forEach(msg => addMessage(msg));
+            });
+        }
+
+        function createRoom() {
+            const roomName = document.getElementById('newRoom').value;
+            if (!roomName) {
+                showError('Please enter a room name');
+                return;
+            }
+            
+            socket.emit('create-room', roomName);
+            document.getElementById('newRoom').value = '';
+        }
+
+        function joinRoom(roomId) {
+            if (currentRoomId === roomId) return;
+            
+            currentRoomId = roomId;
+            socket.emit('join-room', roomId);
+            document.getElementById('currentRoom').textContent = roomId;
+            document.getElementById('chatMessages').innerHTML = '';
+            
+            // Update active room in list
+            document.querySelectorAll('#roomList li').forEach(li => {
+                li.classList.remove('active');
+                if (li.dataset.roomId === roomId) {
+                    li.classList.add('active');
+                }
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && currentRoomId) {
+                socket.emit('chat-message', {
+                    room: currentRoomId,
+                    message: message
+                });
+                input.value = '';
             }
         }
 
-        function showUserInfo(user) {
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('userInfo').style.display = 'block';
-            document.getElementById('userInfoName').textContent = user.username;
-            document.getElementById('userLastLogin').textContent = new Date(user.lastLogin).toLocaleString();
+        function updateRoomList(rooms) {
+            const list = document.getElementById('roomList');
+            list.innerHTML = rooms.map(room => 
+                `<li data-room-id="${room}" onclick="joinRoom('${room}')" class="${room === currentRoomId ? 'active' : ''}">${room}</li>`
+            ).join('');
         }
 
-        function showLoginForm() {
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('userInfo').style.display = 'none';
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
+        function addMessage(data) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'message';
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            div.innerHTML = `<span class="time">[${time}]</span> <span class="name">${data.name}:</span> ${data.message}`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function addSystemMessage(message) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'message system';
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `<span class="time">[${time}]</span> <em>${message}</em>`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
         }
 
         function showError(message) {
@@ -171,6 +300,19 @@
             status.textContent = message;
             status.className = 'success';
         }
+
+        // Handle enter key
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        document.getElementById('newRoom').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') createRoom();
+        });
+
+        document.getElementById('name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAuth();
+        });
     </script>
 </body>
 </html>

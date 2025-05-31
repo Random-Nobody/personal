@@ -9,8 +9,8 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = req.body;
-    const user = new User({ username, email, password });
+    const { name, email, pass } = req.body;
+    const user = new User({ name, email, pass });
     await user.save();
     res.status(201).json({ message: 'User created successfully', userId: user._id });
   } catch (error) {
@@ -19,21 +19,25 @@ export const createUser = async (req: Request, res: Response) => {
 };
 
 export const loginUser = async (req: Request, res: Response) => {
-  const { username, password } = req.body;
+  const { name, pass } = req.body;
+  
+  if (!name) {
+    return void res.status(400).json({ error: 'Name is required' });
+  }
 
-  let user = await User.findOne({ name: username });
+  let user = await User.findOne({ name: name });
   if (user) {
-    const isMatch = await bcrypt.compare(password, user.pass);
+    const isMatch = await bcrypt.compare(pass || '', user.pass);
     if (!isMatch)
-      return void res.status(401).json({ error: 'Invalid password' });
+      return void res.status(401).json({ error: 'Invalid pass' });
     
     user.lastLogin = new Date();
     await user.save();
   } else {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPass = await bcrypt.hash(pass, 10);
     user = await User.create({
-      name: username,
-      pass: hashedPassword,
+      name: name,
+      pass: hashedPass,
       lastLogin: new Date()
     });
   }
@@ -46,7 +50,7 @@ export const loginUser = async (req: Request, res: Response) => {
     success: true,
     user: {
       id: user._id,
-      username: user.name,
+      name: user.name,
       lastLogin: user.lastLogin
     }
   });
@@ -64,7 +68,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 
   res.json({
     id: user._id,
-    username: user.name,
+    name: user.name,
     lastLogin: user.lastLogin
   });
 };
