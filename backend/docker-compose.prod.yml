@@ -1,7 +1,7 @@
 services:
   express:
+    image: mewkone/my-express:latest
     restart: always
-    build: ./express
     env_file:
       - .env
     ports:

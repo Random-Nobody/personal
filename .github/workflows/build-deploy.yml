@@ -1,0 +1,67 @@
+name: deploy to digital ocean
+
+on:
+  push:
+    branches:
+      - build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend
+        run: npm ci
+        working-directory: frontend
+      - name: Build frontend
+        run: npm run onlybuild
+        working-directory: frontend
+      - name: Copy build artifacts
+        run: |
+          mkdir -p backend/express/spa
+          rm -rf backend/express/spa/*
+          mv frontend/dist/* backend/express/spa/
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_NAME }}
+          password: ${{ secrets.DOCKERHUB_PAT }}
+      - name: Build and push to Docker Hub
+        run: |
+          IMG=${{ secrets.DOCKERHUB_NAME }}/my-express:latest
+          docker build -t $IMG -f express/Dockerfile.prod express
+          docker push $IMG
+        working-directory: backend
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Digital Ocean
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /root/git/server || { echo "dir does not exist"; exit 1; }
+            git pull origin build || { echo "Git pull failed"; exit 1; } 
+            echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u ${{ secrets.DOCKERHUB_NAME }} --password-stdin || { echo "Docker login failed"; exit 1; }
+            
+            cd ./backend
+            docker compose -f docker-compose.prod.yml pull || { echo "Docker compose pull failed"; exit 1; }
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans || { echo "Docker compose up failed"; exit 1; }
+            docker logout
+            
+            echo "Deployment success!"
