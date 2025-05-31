@@ -2,15 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { createServer } from 'http';
-import { setupSocket } from './socket';
-import { connectDB } from './config/storage';
-import apiRoutes from './routes/api';
-import testRoutes from './routes/test';
-import { setupSession } from './middleware/session';
-import { errorLogger } from './middleware/error';
-import { PORT } from './config/consts';
+import { setupSocket } from './socket.js';
+import { connectDB } from './config/storage.js';
+import apiRoutes from './routes/api.js';
+import testRoutes from './routes/test.js';
+import { setupSession } from './middleware/session.js';
+import { errorLogger } from './middleware/error.js';
+import { PORT } from './config/consts.js';
+import logger from './utils/logger.js';
 
-const app = express();
+export const app = express();
 const httpServer = createServer(app);
 
 async function initServer() {
@@ -37,10 +38,10 @@ async function initServer() {
   // todo: real error handling. This one just logs.
   app.use(errorLogger);
 
-  httpServer.listen(PORT, () => console.log(`Server Start`));
+  httpServer.listen(PORT);
 }
 
 initServer().catch(err => {
-  console.error('Big error:', err);
+  logger.error('Big error:', err);
   process.exit(1);
 });

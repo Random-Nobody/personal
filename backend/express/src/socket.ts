@@ -1,8 +1,10 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { Socket } from 'socket.io';
-import { webRTCConfig } from './config/webrtc';
-import { setupSession } from './middleware/session';
+import { Session } from 'express-session';
+import { Request } from 'express';
+import { webRTCConfig } from './config/webrtc.js';
+import { setupSession } from './middleware/session.js';
 import { instrument } from '@socket.io/admin-ui';
 
 interface User {
@@ -27,6 +29,14 @@ interface Room {
     messages: Message[];
 }
 
+// Socket request with session
+interface SocketRequest extends Request {
+    session: Session & {
+        authenticated: boolean;
+        name: string;
+    };
+}
+
 const rooms = new Map<string, Room>();
 
 export const setupSocket = (httpServer: HTTPServer) => {
@@ -44,14 +54,15 @@ export const setupSocket = (httpServer: HTTPServer) => {
     });
 
     // Use the session middleware for socket.io
-    const wrap = (middleware: any) => (socket: Socket, next: any) => middleware(socket.request, {}, next);
+    const wrap = (middleware: ReturnType<typeof setupSession>) => 
+        (socket: Socket, next: (err?: Error) => void) => 
+        middleware(socket.request as SocketRequest, {}, next);
     io.use(wrap(setupSession()));
 
     // Authenticate socket connections
     io.use((socket: Socket, next) => {
-        const session = (socket.request as any).session;
-        if (!session?.authenticated) {
-            console.log('Unauthenticated socket connection rejected');
+        const request = socket.request as SocketRequest;
+        if (!request.session?.authenticated) {
             next(new Error('Unauthorized'));
         } else {
             next();
@@ -59,12 +70,10 @@ export const setupSocket = (httpServer: HTTPServer) => {
     });
 
     io.on('connection', (socket: Socket) => {
-        console.log(`Client connected: ${socket.id}`);
-        
-        const session = (socket.request as any).session;
-        let currentUser: User = { 
+        const request = socket.request as SocketRequest;
+        const currentUser: User = { 
             socketId: socket.id, 
-            name: session.name,
+            name: request.session.name,
             streams: { video: false, audio: false }
         };
 
@@ -171,7 +180,6 @@ export const setupSocket = (httpServer: HTTPServer) => {
 
         // Disconnection handling
         socket.on('disconnect', () => {
-            console.log(`Client disconnected: ${socket.id}`);
             Array.from(rooms.keys()).forEach(roomName => {
                 leaveRoom(roomName);
             });

@@ -1,8 +1,9 @@
 import session from 'express-session';
 import { createClient } from 'redis';
-import { REDIS_URI } from '../config/consts';
+import { REDIS_URI } from '../config/consts.js';
 import { RedisStore } from "connect-redis"
 import { Types } from 'mongoose';
+import logger from '../utils/logger.js';
 
 declare module 'express-session' {
   interface SessionData {
@@ -14,9 +15,8 @@ declare module 'express-session' {
 
 export const setupSession = () => {
   const redisClient = createClient({ url: REDIS_URI });
-  redisClient.on('connect', () => console.log('Red Success'));
   redisClient.connect().catch(err => {
-    console.error('Redis Connection Error:', err);
+    logger.error('Redis Connection Error:', err);
     process.exit(1);
   });
 

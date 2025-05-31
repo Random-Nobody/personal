@@ -1,6 +1,5 @@
 services:
   express:
-    restart: always
     build: ./express
     volumes:
       - ./express/src:/app/src
@@ -9,21 +8,17 @@ services:
       - ./express/eslint.config.js:/app/eslint.config.js
       - ./express/jest.config.json:/app/jest.config.json
       - ./express/vite.config.ts:/app/vite.config.ts
-    env_file:
-      - .env
-    ports:
-      - "80:3000"
     depends_on:
       - mongo
       - redis
+    environment:
+      EXPRESS_ENV: "test"
+    restart: "no"
 
   mongo:
     image: mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - ./mongo:/data/db
-      - ./db:/backup
+    restart: "no"
 
   redis:
     image: redis
+    restart: "no"

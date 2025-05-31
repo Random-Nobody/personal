@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { User } from '../models/User';
+import { User } from '../models/User.js';
 import bcrypt from 'bcrypt';
 
 export const getUsers = async (req: Request, res: Response) => {
@@ -19,18 +19,17 @@ export const createUser = async (req: Request, res: Response) => {
 };
 
 export const loginUser = async (req: Request, res: Response) => {
-  const { name, pass } = req.body;
-  
+  const { name, pass = '' } = req.body;
+
   if (!name) {
     return void res.status(400).json({ error: 'Name is required' });
   }
 
   let user = await User.findOne({ name: name });
   if (user) {
-    const isMatch = await bcrypt.compare(pass || '', user.pass);
-    if (!isMatch)
-      return void res.status(401).json({ error: 'Invalid pass' });
-    
+    const isMatch = await bcrypt.compare(pass, user.pass);
+    if (!isMatch) return void res.status(401).json({ error: 'Invalid pass' });
+
     user.lastLogin = new Date();
     await user.save();
   } else {
@@ -62,7 +61,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 
   const user = await User.findById(req.session.userId);
   if (!user) {
-    req.session.destroy(() => {});
+    req.session.destroy(() => { });
     return void res.status(401).json({ error: 'User not found' });
   }
 

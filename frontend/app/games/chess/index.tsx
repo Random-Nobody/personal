@@ -7,7 +7,7 @@ import DraggedPiece from './components/DraggedPiece';
 import { useChessStore } from './store/useChessStore';
 
 export default function ChessGame() {
-  const { board, getBoard, getCurrentPlayer, getMoveHistory, makeMove, undo }
+  const { board, getBoard, getCurrentPlayer, getMoveHistory, makeMove, }
     = useChessStore();
   const boardPos = useRef({ x: -1, y: -1, square: -1 });
   const { heldPiece, animate, panResponder, validMoves }

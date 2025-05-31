@@ -25,7 +25,6 @@ jobs:
       - name: Copy build artifacts
         run: |
           mkdir -p backend/express/spa
-          rm -rf backend/express/spa/*
           mv frontend/dist/* backend/express/spa/
 
       - name: Log in to Docker Hub

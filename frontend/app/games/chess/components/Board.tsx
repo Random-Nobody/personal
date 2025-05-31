@@ -1,4 +1,4 @@
-import { Animated, View } from 'react-native';
+import { View, GestureResponderHandlers } from 'react-native';
 import { BoardPosition, BoardState, HeldPiece, ValidMoves } from '../types';
 import styles from '../styles';
 import Piece from './Piece';
@@ -8,7 +8,7 @@ interface BoardProps {
   board: BoardState;
   boardPos: React.RefObject<BoardPosition>;
   heldPiece: HeldPiece;
-  panHandlers: any;
+  panHandlers: GestureResponderHandlers;
   validMoves: ValidMoves;
 }
 

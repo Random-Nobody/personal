@@ -1,13 +1,13 @@
 
 export type PieceType = ''
-  | 'wp' | 'wr' | 'wn' | 'wb' | 'wq' | 'wk' | 'wb' | 'wn' | 'wr'
-  | 'bp' | 'br' | 'bn' | 'bb' | 'bq' | 'bk' | 'bb' | 'bn' | 'br';
+  | 'wp' | 'wr' | 'wn' | 'wb' | 'wq' | 'wk'      
+  | 'bp' | 'br' | 'bn' | 'bb' | 'bq' | 'bk'      ;
 
 export type BoardState = PieceType[][];
 
 export type ValidMoves = (0 | 1 | 2)[][]; // was boolean, added 2 for en passent
 
-export type BoardPosition = { x: number, y: number, square: number };
+export interface BoardPosition { x: number, y: number, square: number }
 
 export type HeldPiece = { row: number, col: number, piece: PieceType } | null;
 

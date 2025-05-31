@@ -1,0 +1,80 @@
+name: CI Tests
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend
+        run: npm ci
+        working-directory: frontend
+      - name: Frontend lint
+        run: npm run lint
+        working-directory: frontend
+      - name: Frontend tests
+        run: npm run test
+        working-directory: frontend
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Docker compose
+        run: docker compose -f docker-compose.test.yml up -d
+        working-directory: backend
+
+      - name: Wait for docker
+        run: sleep 10
+
+      - name: Backend lint
+        run: docker compose -f docker-compose.test.yml exec express npm run lint
+        working-directory: backend
+
+      - name: Backend tests
+        run: docker compose -f docker-compose.test.yml exec express npm run test
+        working-directory: backend
+
+      - name: Tear down test environment
+        if: always()
+        run: docker compose -f docker-compose.test.yml down
+        working-directory: backend
+
+  integration:
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend
+        run: npm run onlybuild
+        working-directory: frontend
+      - name: Copy build artifacts
+        run: |
+          mkdir -p backend/express/spa
+          mv frontend/dist/* backend/express/spa/
+      - name: Build test image
+        run: docker build -t test -f express/Dockerfile.prod express
+        working-directory: backend
+        # currently just checks the image builds without issue.
+        # Could maybe possible compose with a docker-compose.integrate.yml
+        # if end to end tests are added.
+
+      
