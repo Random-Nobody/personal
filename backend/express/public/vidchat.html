@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Chat Room</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+        .video-container {
+            background-color: #333;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            aspect-ratio: 16/9;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .local-video {
+            transform: scaleX(-1);
+        }
+        .controls {
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .chat-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .message {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            max-width: 80%;
+        }
+        .message .name {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 4px;
+        }
+        .message .time {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 8px;
+        }
+        .message.system {
+            background: #e9ecef;
+            align-self: center;
+            font-style: italic;
+        }
+        .chat-input {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        input, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input {
+            flex: 1;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.danger {
+            background: #dc3545;
+        }
+        button.danger:hover {
+            background: #c82333;
+        }
+        .stream-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 8px;
+            border-radius: 4px;
+            color: white;
+        }
+        .indicator {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hidden {
+            display: none;
+        }
+        #status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .error { background: #ffe6e6; color: #dc3545; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="loginSection" class="controls">
+        <input type="text" id="name" placeholder="Enter your name">
+        <button onclick="handleAuth()">Join Chat</button>
+        <div id="status"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden">
+        <div class="container">
+            <!-- Main Panel with Videos -->
+            <div class="main-panel">
+                <div class="controls">
+                    <input type="text" id="roomId" placeholder="Enter room ID">
+                    <button onclick="joinRoom()">Join Room</button>
+                    <button onclick="toggleVideo()">Toggle Video</button>
+                    <button onclick="toggleAudio()">Toggle Audio</button>
+                    <button onclick="leaveRoom()" class="danger">Leave Room</button>
+                </div>
+                
+                <div class="video-grid" id="videoGrid">
+                    <div class="video-container">
+                        <video id="localVideo" class="local-video" autoplay playsinline muted></video>
+                        <div class="stream-indicator">
+                            <div class="indicator" id="videoIndicator">📷</div>
+                            <div class="indicator" id="audioIndicator">🎤</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div class="chat-panel">
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Type a message...">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentRoom = null;
+        let localStream = null;
+        let peers = new Map();
+
+        // Check authentication status on page load
+        checkAuthStatus();
+
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    handleLoginSuccess(data.name);
+                }
+            } catch (error) {
+                showError('Not logged in');
+            }
+        }
+
+        async function handleAuth() {
+            const name = document.getElementById('name').value.trim();
+            if (!name) {
+                showError('Please enter your name');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, pass: '' })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    handleLoginSuccess(data.user.name);
+                } else {
+                    showError(data.error || 'Authentication failed');
+                }
+            } catch (error) {
+                showError('Failed to authenticate');
+            }
+        }
+
+        function handleLoginSuccess(name) {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('hidden');
+            socket.emit('set-user', { name });
+        }
+
+        // Room Management
+        async function joinRoom() {
+            const roomId = document.getElementById('roomId').value.trim();
+            if (!roomId) {
+                showError('Please enter a room ID');
+                return;
+            }
+
+            try {
+                // Initialize media if not already done
+                if (!localStream) {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: false,
+                        audio: true
+                    });
+                    document.getElementById('localVideo').srcObject = localStream;
+                    updateStreamIndicators();
+                }
+
+                currentRoom = roomId;
+                socket.emit('join-room', roomId);
+
+            } catch (err) {
+                showError('Could not access media devices');
+                console.error(err);
+            }
+        }
+
+        function leaveRoom() {
+            if (!currentRoom) return;
+            
+            // Close all peer connections
+            peers.forEach(pc => pc.close());
+            peers.clear();
+
+            // Remove all remote videos
+            const videos = document.querySelectorAll('.video-container:not(:first-child)');
+            videos.forEach(video => video.remove());
+
+            // Stop all tracks
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+
+            document.getElementById('localVideo').srcObject = null;
+            currentRoom = null;
+        }
+
+        // Media Controls
+        async function toggleVideo() {
+            try {
+                if (!localStream) return;
+
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (!videoTrack) {
+                    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const newVideoTrack = videoStream.getVideoTracks()[0];
+                    localStream.addTrack(newVideoTrack);
+                    peers.forEach(pc => {
+                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                        if (sender) sender.replaceTrack(newVideoTrack);
+                        else pc.addTrack(newVideoTrack, localStream);
+                    });
+                } else {
+                    videoTrack.stop();
+                    localStream.removeTrack(videoTrack);
+                    peers.forEach(pc => {
+                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                        if (sender) pc.removeTrack(sender);
+                    });
+                }
+
+                updateStreamIndicators();
+                socket.emit('stream-status', {
+                    room: currentRoom,
+                    video: !!localStream.getVideoTracks()[0],
+                    audio: !!localStream.getAudioTracks()[0]?.enabled
+                });
+
+            } catch (err) {
+                showError('Could not toggle video');
+                console.error(err);
+            }
+        }
+
+        function toggleAudio() {
+            if (!localStream) return;
+            
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                updateStreamIndicators();
+                socket.emit('stream-status', {
+                    room: currentRoom,
+                    video: !!localStream.getVideoTracks()[0],
+                    audio: audioTrack.enabled
+                });
+            }
+        }
+
+        function updateStreamIndicators() {
+            if (!localStream) return;
+            
+            const videoEnabled = !!localStream.getVideoTracks()[0];
+            const audioEnabled = !!localStream.getAudioTracks()[0]?.enabled;
+            
+            document.getElementById('videoIndicator').style.opacity = videoEnabled ? '1' : '0.5';
+            document.getElementById('audioIndicator').style.opacity = audioEnabled ? '1' : '0.5';
+        }
+
+        // WebRTC
+        async function createPeerConnection(targetId) {
+            const pc = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            });
+
+            // Add local stream
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    pc.addTrack(track, localStream);
+                });
+            }
+
+            // Create remote video element
+            const container = document.createElement('div');
+            container.className = 'video-container';
+            container.id = `container-${targetId}`;
+            
+            const video = document.createElement('video');
+            video.id = `remote-${targetId}`;
+            video.autoplay = true;
+            video.playsInline = true;
+            
+            const indicators = document.createElement('div');
+            indicators.className = 'stream-indicator';
+            indicators.innerHTML = `
+                <div class="indicator" id="video-${targetId}">📷</div>
+                <div class="indicator" id="audio-${targetId}">🎤</div>
+            `;
+            
+            container.appendChild(video);
+            container.appendChild(indicators);
+            document.getElementById('videoGrid').appendChild(container);
+
+            // Handle incoming streams
+            pc.ontrack = (event) => {
+                video.srcObject = event.streams[0];
+            };
+
+            // Handle connection state
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('signal', {
+                        target: targetId,
+                        type: 'candidate',
+                        data: event.candidate
+                    });
+                }
+            };
+
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                    handlePeerDisconnection(targetId);
+                }
+            };
+
+            peers.set(targetId, pc);
+            return pc;
+        }
+
+        function handlePeerDisconnection(peerId) {
+            const pc = peers.get(peerId);
+            if (pc) {
+                pc.close();
+                peers.delete(peerId);
+            }
+            
+            const container = document.getElementById(`container-${peerId}`);
+            if (container) {
+                container.remove();
+            }
+        }
+
+        // Chat
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && currentRoom) {
+                socket.emit('message', {
+                    room: currentRoom,
+                    content: message,
+                    type: 'chat'
+                });
+                input.value = '';
+            }
+        }
+
+        function addMessage(message) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${message.type}`;
+            
+            const time = new Date(message.timestamp).toLocaleTimeString();
+            if (message.type === 'system') {
+                div.innerHTML = `<span class="time">[${time}]</span> ${message.content}`;
+            } else {
+                div.innerHTML = `
+                    <div class="name">${message.name}</div>
+                    <div class="content">
+                        ${message.content}
+                        <span class="time">[${time}]</span>
+                    </div>
+                `;
+            }
+            
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // Socket Events
+        socket.on('user-set', (user) => {
+            showSuccess(`Welcome, ${user.name}!`);
+        });
+
+        socket.on('room-state', ({ users, messages }) => {
+            messages.forEach(addMessage);
+        });
+
+        socket.on('initialize-connections', async (users) => {
+            for (const userId of users) {
+                const pc = await createPeerConnection(userId);
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                socket.emit('signal', {
+                    target: userId,
+                    type: 'offer',
+                    data: offer
+                });
+            }
+        });
+
+        socket.on('signal', async ({ from, type, data }) => {
+            try {
+                let pc = peers.get(from);
+                
+                if (type === 'offer') {
+                    pc = pc || await createPeerConnection(from);
+                    await pc.setRemoteDescription(new RTCSessionDescription(data));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    socket.emit('signal', {
+                        target: from,
+                        type: 'answer',
+                        data: answer
+                    });
+                }
+                else if (type === 'answer' && pc) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data));
+                }
+                else if (type === 'candidate' && pc) {
+                    await pc.addIceCandidate(new RTCIceCandidate(data));
+                }
+            } catch (err) {
+                console.error('Error handling signal:', err);
+            }
+        });
+
+        socket.on('user-joined', ({ user, timestamp }) => {
+            addMessage({
+                type: 'system',
+                content: `${user.name} joined the room`,
+                timestamp
+            });
+        });
+
+        socket.on('user-left', ({ user, timestamp }) => {
+            addMessage({
+                type: 'system',
+                content: `${user.name} left the room`,
+                timestamp
+            });
+            handlePeerDisconnection(user.socketId);
+        });
+
+        socket.on('user-updated', (user) => {
+            const videoInd = document.getElementById(`video-${user.socketId}`);
+            const audioInd = document.getElementById(`audio-${user.socketId}`);
+            if (videoInd) videoInd.style.opacity = user.streams.video ? '1' : '0.5';
+            if (audioInd) audioInd.style.opacity = user.streams.audio ? '1' : '0.5';
+        });
+
+        socket.on('message', addMessage);
+
+        // Utilities
+        function showError(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'error';
+        }
+
+        function showSuccess(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'success';
+        }
+
+        // Handle enter key
+        document.getElementById('messageInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        document.getElementById('name')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAuth();
+        });
+
+        document.getElementById('roomId')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinRoom();
+        });
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            if (currentRoom) {
+                leaveRoom();
+            }
+        });
+    </script>
+</body>
+</html>
