@@ -1,47 +1,30 @@
 import express from 'express';
 import cors from 'cors';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { setupWebRTC } from './webrtc';
-
-dotenv.config();
+import { connectDB } from './config/db';
+import apiRoutes from './routes/api';
+import { setupStatic } from './middleware/static';
 
 const app = express();
 const httpServer = createServer(app);
-const port = process.env.PORT || 3000;
+const port = 3000; // Fixed port for Docker
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
 
-// MongoDB Connection
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://mongo:27017/merndb';
-
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Connect to MongoDB
+connectDB();
 
 // Setup WebRTC signaling
 const io = setupWebRTC(httpServer);
 
-// Routes
-import userRoutes from './routes/userRoutes';
+// Mount API routes
+app.use('/api', apiRoutes);
 
-// Basic route
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'WebRTC Signaling Server',
-    socketIO: true,
-    status: 'running'
-  });
-});
-
-// API routes
-app.use('/api/users', userRoutes);
+// Setup static files and SPA handler
+setupStatic(app);
 
 // Start server
-httpServer.listen(port, () => {
-  console.log(`WebRTC Signaling Server is running on port ${port}`);
-});
+httpServer.listen(port, () => console.log(`Server running on port ${port}`));

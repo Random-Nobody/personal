@@ -8,7 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build": "expo export -p web",
-    "postbuild": "rm -rf ../backend/express/public/app/* && mv dist/* ../backend/express/public/app/",
+    "postbuild": "rm -rf ../backend/express/spa/* && mv dist/* ../backend/express/spa/",
     "test": "jest --watchAll"
   },
   "jest": {

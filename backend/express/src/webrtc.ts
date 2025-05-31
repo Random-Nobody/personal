@@ -1,5 +1,6 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
+import { webRTCConfig } from './config/webrtc';
 
 interface Room {
   users: Set<string>;
@@ -9,10 +10,7 @@ const rooms: Map<string, Room> = new Map();
 
 export const setupWebRTC = (httpServer: HTTPServer) => {
   const io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: '*', // In production, replace with your actual frontend domain
-      methods: ['GET', 'POST']
-    }
+    cors: webRTCConfig.cors
   });
 
   io.on('connection', (socket) => {
