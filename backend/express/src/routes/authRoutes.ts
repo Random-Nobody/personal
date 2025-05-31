@@ -15,20 +15,19 @@ router.post('/login', async (req: Request, res: Response) => {
   let user = await User.findOne({ name: username });
   if (user) {
     const isMatch = await bcrypt.compare(password, user.pass);
-    if (!isMatch) {
-      res.status(401).json({ error: 'Invalid password' })
-      return;
-    }
+    if (!isMatch)
+      return void res.status(401).json({ error: 'Invalid password' })
     user.lastLogin = new Date();
     await user.save();
   } else {
     const hashedPassword = await bcrypt.hash(password, 10);
     user = await User.create({
       name: username,
-      password: hashedPassword,
+      pass: hashedPassword,
       lastLogin: new Date()
     });
   }
+  req.session.userId = user._id;
   req.session.name = user.name;
   req.session.authenticated = true;
   res.json({
@@ -43,16 +42,15 @@ router.post('/login', async (req: Request, res: Response) => {
 
 // Get current user
 router.get('/me', async (req: Request, res: Response) => {
-  if (!req.session.authenticated) {
-    res.status(401).json({ error: 'Not authenticated' });
-    return
-  }
+  if (!req.session.authenticated)
+    return void res.status(401).json({ error: 'Not authenticated' });
+
   const user = await User.findById(req.session.userId);
   if (!user) {
     req.session.destroy(() => { });
-    res.status(401).json({ error: 'User not found' });
-    return
+    return void res.status(401).json({ error: 'User not found' });
   }
+
   res.json({
     id: user._id,
     username: user.name,

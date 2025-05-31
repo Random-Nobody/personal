@@ -2,11 +2,13 @@ import session from 'express-session';
 import { createClient } from 'redis';
 import { REDIS_URI } from '../config/consts';
 import { RedisStore } from "connect-redis"
+import { Types } from 'mongoose';
 
 declare module 'express-session' {
   interface SessionData {
-    userId?: string;
-    authenticated?: boolean;
+    userId: Types.ObjectId;
+    name: string;
+    authenticated: boolean;
   }
 }
 

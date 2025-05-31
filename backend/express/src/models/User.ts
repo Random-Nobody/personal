@@ -1,20 +1,17 @@
-import mongoose from 'mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
-export interface UserType extends Document {
+interface IUser extends Document {
+  _id: Types.ObjectId;
   name: string;
   pass: string;
   lastLogin: Date;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-const userSchema = new mongoose.Schema({
+const userSchema = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
-    trim: true
+    unique: true
   },
   pass: {
     type: String,
@@ -28,4 +25,4 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-export const User = mongoose.model<UserType>('User', userSchema);
+export const User = mongoose.model<IUser>('User', userSchema);
