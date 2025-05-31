@@ -1,3 +1,4 @@
-mongo/
-.env
 node_modules
+.env
+backend/mongo/*
+backend/express/public/app/*
