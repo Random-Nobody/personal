@@ -1,30 +1,45 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { createServer } from 'http';
 import { setupWebRTC } from './webrtc';
-import { connectDB } from './config/db';
+import { connectDB } from './config/storage';
 import apiRoutes from './routes/api';
-import { setupStatic } from './middleware/static';
+import { setupSession } from './middleware/session';
 
 const app = express();
 const httpServer = createServer(app);
 const port = 3000; // Fixed port for Docker
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Initialize the server
+async function initServer() {
+  // Middleware
+  app.use(cors());
+  app.use(express.json());
 
-// Connect to MongoDB
-connectDB();
+  // Connect to databases
+  await connectDB();
 
-// Setup WebRTC signaling
-const io = setupWebRTC(httpServer);
+  // Setup session handling
+  app.use(setupSession());
 
-// Mount API routes
-app.use('/api', apiRoutes);
+  // Setup WebRTC signaling
+  setupWebRTC(httpServer);
 
-// Setup static files and SPA handler
-setupStatic(app);
+  // Mount API routes
+  app.use('/api', apiRoutes)
+    .use(express.static(path.join(__dirname, '../spa')))
+    .use((req, res, next) => {
+      if (req.path.includes('.')) return next();
+      if (req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(__dirname, '../spa/index.html'));
+    });
 
-// Start server
-httpServer.listen(port, () => console.log(`Server running on port ${port}`));
+  // Start server
+  httpServer.listen(port, () => console.log(`Server Start`));
+}
+
+initServer().catch(err => {
+  console.error('Big error:', err);
+  process.exit(1);
+});
