@@ -28,5 +28,5 @@ describe('API Routes', () => {
       expect(res.statusCode).toBe(400);
       expect(res.body).toHaveProperty('error');
     });
-  });
+  }); 
 });
