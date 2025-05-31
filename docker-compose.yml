@@ -4,6 +4,7 @@ services:
     build: ./express
     volumes:
       - ./express/src:/app/src
+      - ./express/public:/app/public
       - ./express/package.json:/app/package.json
       - ./express/tsconfig.json:/app/tsconfig.json
     env_file:
